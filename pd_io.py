@@ -4,22 +4,25 @@
 # io.py
 
 import pdb
+import sys
 import pandas as pd
 import numpy as np
 
-from lib import add_doc
+from decorators import add_doc
+from decorators import cal_time
 
-def read_excel(filename, sheetname, fields={}, **kargs):
+@add_doc(pd.read_csv)
+def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     '''read excel by pandas.read_excel
     mainly parameters are listed below:
 
     parameters:
         filename
         sheetname  string or index, default is 0
-        fields     use as conventers in pandas.read_excel()
+        dtypes     use as conventers in pandas.read_excel()
                      be notice, func in conventers is applied on element
                      of data not columns
-    fields functions:
+    dtypes functions:
         float       np.float/np.float64
         int         np.int/np.int64
         datetime    pd.to_datetime, used on single value with great power 
@@ -28,17 +31,22 @@ def read_excel(filename, sheetname, fields={}, **kargs):
     @encoding      chinese characters will be encoded as 'unicode'
 
     for example:
-        fields = {
+        dtypes = {
             u'发生日期': pd.to_datetime
         }
-        data = read_excel('test.xlsx', 0, fields=fields)
+        data = read_excel('test.xlsx', 0, dtypes=dtypes)
     '''
-    if not sheet_name: sheet_name=0  # the first sheet
-    data = pd.read_excel(filename, sheet_name, header=header, converters=fields)
+    data = pd.read_excel(filename, sheet_name=sheet_name, header=header, converters=dtypes)
     return data
 
+@cal_time
+def test_read_excel():
+    filename = "/Users/apple/Documents/projects/卡行天下/数据/网络交易量.xlsx"
+    data = read_excel(filename)
+
 @add_doc(pd.read_csv)
-def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}, **kargs):
+def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}, 
+        error_bad_lines=True, **kargs):
     ''' read csv file by pandas.read_csv
     @parameters:
         filename
@@ -49,6 +57,7 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}
         dtype       list or dict, specifying field types, see pandas.read_csv for usage
         ftypes      field type, existed for short of dtype, which only support np.dtypes and 
                         python type
+        error_bad_lines  error 
     notices:
         1, encoding is one annoying problems in data reading
         2, pandas use ser.astype(type) to transform the value to specifed types. 
@@ -73,8 +82,25 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}
         data[key] = ftype(data[key])
     return data
 
+
+@add_doc(pd.read_table)
+def read_table(filename, sep='\t', header=0, encoding='utf-8', **kargs):
+    ''' read txt table file by pd.read_table
+    NOTICE:
+        1, read_table is usually very faster than just reading csv
+        2, but the encoding problems may occurs, so when writing to txt file, make sure
+            which encoding character is used, like 'utf-16'
+
+    @END
+    '''
+    data = pd.read_table(filename, sep=sep, header=header, encoding=encoding, **kargs)
+    return data
+
+@cal_time
 def test_read_csv():
     filename = "temp/test.csv"
+    filename = '/Users/apple/Documents/projects/卡行天下/数据/网络交易量.csv'
+    '''
     dtype={
             u'发货额(扣信息费)': np.float32,
             u'件数': int,
@@ -83,10 +109,58 @@ def test_read_csv():
             u'日期': pd.DatetimeIndex,
             u'月份': pd.DatetimeIndex
         }
+    '''
+    dtype = {}
+    ftypes={}
 
-    data = read_csv(filename, header=0, dtype = dtype, ftypes=ftypes, encoding='gb2312')
+    #data = read_csv(filename, header=0, dtype = dtype, ftypes=ftypes, encoding='gb2312', engine='c')
+    data = read_csv(filename, header=0, dtype = dtype, 
+            ftypes=ftypes, encoding=None, error_bad_lines=False)
+    cols = data.columns
+    encoding='gb2312'
+    #pdb.set_trace()
+    '''
+    data.columns = [col.decode(encoding) for col in data.columns]
+    for col in data.columns:
+        try:
+            data[col] = [item.decode(encoding) for item in data[col]]
+        except:
+            continue
+            #pdb.set_trace()
+    '''
     print data
     
+@cal_time
+def test_read_table():
+    filename = '/Users/apple/Documents/projects/卡行天下/数据/网络交易量.utf16.txt'
+    filename = '/Users/apple/Documents/projects/卡行天下/数据/网络交易量.txt'
+    data = read_table(filename, sep='\t', header=0, encoding=None)
+    #pdb.set_trace()
+    print data
+
+def test():
+    test_read_csv()
+    #test_read_excel()
+    test_read_table()
+
+if __name__ == '__main__':
+    test()
+
+'''
+**Time Test**
+for same data with different filetype:
+    read_excel   xlsx   'gb2312'    470.611925125s
+    read_table   txt    'utf-16'    8.74457001686s
+    read_table   txt    None        6.82893490791s
+    read_csv     csv    None        6.41652703285s
+    read_csv     csv    gb2312      16.9414849281s
+读取txt和csv格式的文件时间基本一致。但是编码的时间确实很多。
+主要时间浪费在格式的转换上！
 
 
+总结下来，其中的问题包括：
+    1，字符编码问题
+    2，字符类型/默认值问题；
+    3，字符格式问题
+'''
 
