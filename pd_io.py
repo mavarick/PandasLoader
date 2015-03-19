@@ -147,8 +147,7 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     return data
 
 @add_doc(pd.read_csv)
-def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},
-        error_bad_lines=True, 
+def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad_lines=True, 
         parse_on_loading=1, check_after_load=1,
         **kargs):
     ''' read csv file by pandas.read_csv
@@ -206,7 +205,9 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},
     return data
 
 @add_doc(pd.read_table)
-def read_table(filename, sep='\t', header=0, encoding='utf-8', **kargs):
+def read_table(filename, sep='\t', header=0, encoding='utf-8', 
+        parse_on_loading=1, check_after_load=1,
+        **kargs):
     ''' read txt table file by pd.read_table
     NOTICE:
         1, read_table is usually very faster than just reading csv
@@ -215,8 +216,9 @@ def read_table(filename, sep='\t', header=0, encoding='utf-8', **kargs):
 
     @END
     '''
-    data = pd.read_table(filename, sep=sep, header=header, encoding=encoding, **kargs)
-    return data
+    return read_csv(filename, sep=sep, header=header, encoding=encoding,
+        parse_on_loading=parse_on_loading, check_after_load=check_after_load,
+        **kargs)
 
 def handle_type(data, dtypes):
     ''' handle the data types

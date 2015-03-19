@@ -4,8 +4,8 @@ dtypes is an easy way to define field type of DataFrame.
      dtypes = [
           # (field_name/field_index, type, default_value)
           # if default_value is None, result will be NaN in DataFrame
-          (‘id', np.float64, 0),
-          (’name', unicode, ''), # element should have type unicode
+          ('id', np.float64, 0),
+          ('name', unicode, ''), # element should have type unicode
           ('amount', to_float32, None),
           (4, np.datetime64, None)
      ]
@@ -19,6 +19,10 @@ converter function should be like this:
           return new_val
 then, use read_csv to load data:
       data = read_csv(filename, encoding='gb2312', dtypes=dtypes)
+
+NOTICE
+=======
+  1. np.datetime64. if none, it's NaT, if 0, means '1970-01-01 00:00:00'
 
 Control Processing
 ===============
@@ -47,7 +51,6 @@ data is 10000-length string series
 BETTER-DO
 =========
   1. use np.float64 to represent int type. or NaN value will raise.
-  2. 
 
 TODO
 =====
