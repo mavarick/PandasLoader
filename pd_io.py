@@ -63,7 +63,7 @@ def parse_dtypes(dtypes):
             default_value_dict[index_or_name] = default_value
         # converters
         if _t.__name__ not in np.__dict__:
-            converters[index_or_name] = add_args(_t, default_val= default_value)
+            converters[index_or_name] = _t
             continue
         # parse_dates
         if _t in [np.datetime64]:
@@ -187,7 +187,8 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad
     Notes
     -----
     1, encoding is one annoying problems in data reading
-    2, pandas use ser.astype(type) to transform the value to specifed types. 
+    2, pandas use ser.astype(type) to transform the value to specifed types
+    3, np.int should be replaced as np.float, for NaN problems
 
     Also see 
     --------
@@ -208,8 +209,6 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad
     # check data
     if check_after_load:
         for index_or_name, _t, default_value in dtypes:
-            if _t.__name__ not in np.__dict__:
-               _t = add_args(_t, default_val= default_value)
             check_t = CHECK_T.get(_t, _t)
            
             ser, error_list = check_ser_type(data[index_or_name], check_t)
@@ -227,13 +226,10 @@ def read_table(filename, sep='\t', header=0, encoding='utf-8',
         **kargs):
     ''' read txt table file by pd.read_table
 
-    Just
-
     Also see
     --------
     read_csv(), the only difference with read_csv() is sep, that's why new version 
     pandas hasn't list this function
-
     '''
     return read_csv(filename, sep=sep, header=header, encoding=encoding,
         parse_on_loading=parse_on_loading, check_after_load=check_after_load,

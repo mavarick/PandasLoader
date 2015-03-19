@@ -24,11 +24,11 @@ na_values={
 }
 '''
 
-def to_float32(target_val, default_val):
+def to_float32(target_val):
     try:
         new_val = np.float32(target_val)
     except:
-        new_val = default_val
+        return None
     return new_val
 
 
@@ -40,9 +40,9 @@ dtypes = [
 
     ('id', np.int32, ''),
     ('name', unicode, ''),  # element should have type unicode
-    ('amount', to_float32, None),
-    ('number', np.float64, 0),
-    ('dtime', np.datetime64, 0)
+    ('amount', to_float32, 0.0),
+    ('number', np.float64, 0.0),
+    ('dtime', np.datetime64, None)
 ]
 
 '''
