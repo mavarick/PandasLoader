@@ -1,0 +1,3 @@
+# note
+1, nan with type: type<'float'>, and if ser =Series[nan, NaN], you should use ser.fillna(val)
+twice to fill the na value totally!

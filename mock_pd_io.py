@@ -5,11 +5,12 @@
 import pdb
 import pandas as pd 
 import numpy as np
-from pd_io import read_csv, read_table
+from pd_io import read_csv, read_table, read_excel
 
 ## for csv file
 filename = '/Users/apple/Documents/privates/tools/temp/mock.csv'
 filename = '/Users/apple/Documents/privates/tools/temp/mock.txt'
+filename = '/Users/apple/Documents/privates/tools/temp/mock.xlsx'
 '''
 names = ['id', 'name', 'amount', 'number', 'dtime']
 dtype = {
@@ -27,12 +28,7 @@ na_values={
 def to_float32(target_val):
     try:
         new_val = np.float32(target_val)
-    except:
-        return None
-    return new_val
-def to_datetime(target_val):
-    try:
-        new_val = np.to_datetime(target_val)
+        if pd.isnull(new_val): new_val = None
     except:
         return None
     return new_val
@@ -65,8 +61,9 @@ dtypes = [
 #data = read_csv(filename, encoding='gb2312', dtypes=dtypes, na_values={"number":['']},
 #    transform=0, parse_on_loading=1, check_after_load=1)
 #read txt
-data = read_table(filename, encoding='gb2312', dtypes=dtypes, na_values={"number":['']},
-    parse_on_loading=1, check_after_load=1)
+#data = read_table(filename, encoding='gb2312', dtypes=dtypes, na_values={"number":['']},
+#    parse_on_loading=1, check_after_load=1)
 
+data = read_excel(filename, 0, dtypes=dtypes)
 print data
 

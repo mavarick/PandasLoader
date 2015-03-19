@@ -73,7 +73,7 @@ def parse_dtypes(dtypes):
         dtype[index_or_name] = _t
     return dtype, parse_dates, converters, default_value_dict
 
-def check_ser_type(ser, dtype):
+def check_ser_type(ser, dtype, parse_func):
     ''' check series has dtype or not
     '''
     #pdb.set_trace()
@@ -83,7 +83,6 @@ def check_ser_type(ser, dtype):
         except:
             return False
 
-    #pdb.set_trace()
     error_list = []
     if not check_type():
         try:
@@ -92,7 +91,7 @@ def check_ser_type(ser, dtype):
             pass
     if not check_type():
         try:
-            new_ser = dtype(ser)
+            new_ser = parse_func(ser)
             if new_ser and len(new_ser) == len(ser):
                 ser = new_ser
         except:
@@ -100,13 +99,13 @@ def check_ser_type(ser, dtype):
     if not check_type():
         try:
             for idx, item in enumerate(ser):
-                ser[idx] = dtype(item)
+                ser[idx] = parse_func(item)
         except:
             pdb.set_trace()
             error_list.append((idx, item, dtype))
     return ser, error_list
 
-@add_doc(pd.read_csv)
+#@add_doc(pd.read_csv)
 def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     '''read excel by pandas.read_excel
 
@@ -116,13 +115,22 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     sheetname:string or int, default is 0
     dtypes: list, dict. TODO
     encoding: string
-
-    TODO
-    ----
-    1. use dtypes to convert field after loading data
-
     '''
-    data = pd.read_excel(filename, sheet_name=sheet_name, header=header, converters=dtypes)
+    # read the data
+    data = pd.read_excel(filename, sheet_name=sheet_name, header=header)
+    # check the data
+    for index_or_name, _t, _func, default_value in dtypes:
+        check_t = CHECK_T.get(_t, _t)
+           
+        ser, error_list = check_ser_type(data[index_or_name], check_t, _func)
+        if error_list:
+            print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
+
+    # fillna
+    for index_or_name, _t, _func, default_value in dtypes:
+        if default_value is not None:
+            data[index_or_name].fillna(default_value, inplace=True)
+    #
     return data
 
 #@add_doc(pd.read_csv)
@@ -193,10 +201,6 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad
     2, pandas use ser.astype(type) to transform the value to specifed types
     3, np.int should be replaced as np.float, for NaN problems
 
-    Datetime type
-    -------------
-    
-
     Also see 
     --------
     http://pandas.pydata.org/pandas-docs/stable
@@ -218,7 +222,7 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad
         for index_or_name, _t, _func, default_value in dtypes:
             check_t = CHECK_T.get(_t, _t)
            
-            ser, error_list = check_ser_type(data[index_or_name], check_t)
+            ser, error_list = check_ser_type(data[index_or_name], check_t, _func)
             if error_list:
                print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
     # fillna
