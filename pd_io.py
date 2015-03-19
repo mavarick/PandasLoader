@@ -5,11 +5,14 @@
 
 import pdb
 import sys
+import traceback
 import pandas as pd
 import numpy as np
 
 from decorators import add_doc
 from decorators import cal_time
+
+
 
 @add_doc(pd.read_csv)
 def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
@@ -39,11 +42,6 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     data = pd.read_excel(filename, sheet_name=sheet_name, header=header, converters=dtypes)
     return data
 
-@cal_time
-def test_read_excel():
-    filename = "/Users/apple/Documents/projects/卡行天下/数据/网络交易量.xlsx"
-    data = read_excel(filename)
-
 @add_doc(pd.read_csv)
 def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}, 
         error_bad_lines=True, **kargs):
@@ -53,6 +51,8 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}
         header      default is 0
         encoding    character encoding, chinese character in csv file from excel usually
                         is 'gb2312'
+                    pandas raise errors when encoding is not right, and for chinese and korean,
+                        'utf-16' is better for that
         sep         seperator or delimiter
         dtype       list or dict, specifying field types, see pandas.read_csv for usage
         ftypes      field type, existed for short of dtype, which only support np.dtypes and 
@@ -82,7 +82,6 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}
         data[key] = ftype(data[key])
     return data
 
-
 @add_doc(pd.read_table)
 def read_table(filename, sep='\t', header=0, encoding='utf-8', **kargs):
     ''' read txt table file by pd.read_table
@@ -96,55 +95,82 @@ def read_table(filename, sep='\t', header=0, encoding='utf-8', **kargs):
     data = pd.read_table(filename, sep=sep, header=header, encoding=encoding, **kargs)
     return data
 
-@cal_time
-def test_read_csv():
-    filename = "temp/test.csv"
-    filename = '/Users/apple/Documents/projects/卡行天下/数据/网络交易量.csv'
-    '''
-    dtype={
-            u'发货额(扣信息费)': np.float32,
-            u'件数': int,
-        }
-    ftypes={
-            u'日期': pd.DatetimeIndex,
-            u'月份': pd.DatetimeIndex
-        }
-    '''
-    dtype = {}
-    ftypes={}
+''' dtype:
+numpy methods
+    int  np.int16, np.int32, np.int64
+    float np.float, np.float32, np.float64
+    datetime  np.datetime64
 
-    #data = read_csv(filename, header=0, dtype = dtype, ftypes=ftypes, encoding='gb2312', engine='c')
-    data = read_csv(filename, header=0, dtype = dtype, 
-            ftypes=ftypes, encoding=None, error_bad_lines=False)
-    cols = data.columns
-    encoding='gb2312'
-    #pdb.set_trace()
+python buildin methods
+    int
+    float
+    datetime.datetime
+
+conventers:
+pandas methods
+'''
+import pandas as pd
+import numpy as np
+dtypes = [
+    # (field_name/field_index, type, default_value) 
+    # if default_value is None, should be Nan in pandas
+    ('id', np.int32, ''),
+    ('name', str, ''),  # element should have type unicode
+    ('amount', np.float32, 0.0),
+    ('number', np.int32, 0),
+    ('dtime', np.datetime64, None)
+]
+
+
+def handle_type(data, dtypes):
+    ''' handle the data types
     '''
-    data.columns = [col.decode(encoding) for col in data.columns]
-    for col in data.columns:
-        try:
-            data[col] = [item.decode(encoding) for item in data[col]]
-        except:
-            continue
-            #pdb.set_trace()
-    '''
-    print data
+    assert type(data) == pd.DataFrame, "Error: data type must be pandas.DataFrame"
+    error_num = 0
+    error_lst = []
     
-@cal_time
-def test_read_table():
-    filename = '/Users/apple/Documents/projects/卡行天下/数据/网络交易量.utf16.txt'
-    filename = '/Users/apple/Documents/projects/卡行天下/数据/网络交易量.txt'
-    data = read_table(filename, sep='\t', header=0, encoding=None)
-    #pdb.set_trace()
-    print data
+    for name, _dtype, default in dtypes:
+        pdb.set_trace()
+        try:
+            data[name].astype(_dtype)
+        except:
+            pass
+        else:
+            continue
+        if data[name].dtype is not _dtype:
+            # array method
+            try:
+                data[name] = _dtype(data[name])
+            except:
+                pass
+            else:
+                continue
+        # value method
+        if data[name].dtype is not _dtype:
+            try:
+                data[name] = map(_dtype, data[name])
+            except:
+                pass
+            else:
+                continue
+        # value error detection
+        if data[name].dtype is not _dtype:
+            col = data[name]
+            for index in col.index:
+                try:
+                    col[index] = _dtype(col[index])
+                except:
+                    error_num += 1
+                    error_lst.append((name, index, traceback.format_exc()))
+        assert data[name].dtype == _dtype, \
+            "Error: col[{0}] type should be {1}".format(name.encode('utf8'), _dtype)
+    return error_num, error_lst
 
-def test():
-    test_read_csv()
-    #test_read_excel()
-    test_read_table()
+''' 
+由于用户的写入问题导致导致的数据根本无法load进入到pandas，因此需要一个组件来对数据进行清理。
+这个清理发生在load进入pandas之前，生成pandas能够处理的数据。
+'''
 
-if __name__ == '__main__':
-    test()
 
 '''
 **Time Test**
