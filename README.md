@@ -1,7 +1,8 @@
 Simple Usage Example
 =================
 dtypes is an easy way to define field type of DataFrame.
-     dtypes = [
+```python
+dtypes = [
           # (field_name/field_index, type, default_value)
           # if default_value is None, result will be NaN in DataFrame
           ('id', np.float64, 0),
@@ -9,20 +10,26 @@ dtypes is an easy way to define field type of DataFrame.
           ('amount', to_float32, None),
           (4, np.datetime64, None)
      ]
+```
 dtypes will be classified in to dtype, converter, parse_dates in pandas read_csv arguments.
 converter function should be like this:
+```python
       def to_float32(target_val, default_val):
           try:
                new_val = np.float32(target_val)
           except:
                new_val = default_val
           return new_val
+```
 then, use read_csv to load data:
+```python
       data = read_csv(filename, encoding='gb2312', dtypes=dtypes)
+```
 
-NOTICE
+NOTES
 =======
   1. np.datetime64. if none, it's NaT, if 0, means '1970-01-01 00:00:00'
+  2. use np.float64 to represent int type. or NaN value will raise.
 
 Control Processing
 ===============
@@ -45,12 +52,7 @@ data is 10000-length string series
 | ser.astype(np.float32) | 1000 loops, best of 3: 281 µs per loop |
 | np.float32(ser) | 1000 loops, best of 3: 248 µs per loop |
 | [float(x) for x in ser] | 100 loops, best of 3: 1.77 ms per loop |
-| map(lambda x:np.float32(x), ser) | 100 loops, best of 3: 9.75 ms per loop |
-
-
-BETTER-DO
-=========
-  1. use np.float64 to represent int type. or NaN value will raise.
+| map(lambda x:np.float32(x), ser) | 100 loops, best of 3: 9.75 ms per loop |  
 
 TODO
 =====
