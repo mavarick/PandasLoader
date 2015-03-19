@@ -57,13 +57,13 @@ def parse_dtypes(dtypes):
     converters = {}
     num = 0
     for index in range(len(dtypes)):
-        index_or_name, _t, default_value = dtypes[index]
+        index_or_name, _t, _func, default_value = dtypes[index]
         # handle default values, when the value is NaN, then fillit
         if default_value is not None:
             default_value_dict[index_or_name] = default_value
         # converters
-        if _t.__name__ not in np.__dict__:
-            converters[index_or_name] = _t
+        if _func.__name__ not in np.__dict__:
+            converters[index_or_name] = _func
             continue
         # parse_dates
         if _t in [np.datetime64]:
@@ -152,6 +152,9 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad
             'utf-16' is better for that
     sep: string
     dtype: list or dict, also see: pandas.read_csv
+        for Datetime field, there are two ways to decide the datetime field:
+            1, type: np.datetime64, and use parse_dates 
+            2, type: pd.Timestamp, and use pd.to_datetime
     error_bad_lines: bool. 
         default is False, meaning skip bad lines, whicn contains more or less elements
 
@@ -190,6 +193,10 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad
     2, pandas use ser.astype(type) to transform the value to specifed types
     3, np.int should be replaced as np.float, for NaN problems
 
+    Datetime type
+    -------------
+    
+
     Also see 
     --------
     http://pandas.pydata.org/pandas-docs/stable
@@ -208,7 +215,7 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad
     #pdb.set_trace()
     # check data
     if check_after_load:
-        for index_or_name, _t, default_value in dtypes:
+        for index_or_name, _t, _func, default_value in dtypes:
             check_t = CHECK_T.get(_t, _t)
            
             ser, error_list = check_ser_type(data[index_or_name], check_t)

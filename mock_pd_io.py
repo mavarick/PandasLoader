@@ -30,19 +30,25 @@ def to_float32(target_val):
     except:
         return None
     return new_val
-
+def to_datetime(target_val):
+    try:
+        new_val = np.to_datetime(target_val)
+    except:
+        return None
+    return new_val
 
 dtypes = [
-    # (field_name/field_index, type, default_value) 
+    # (field_name/field_index, type, func, default_value) 
     # if default_value is None, should be Nan in pandas
     # and type should always be numpy types
     # str or unicode type will transformed to 
 
-    ('id', np.int32, ''),
-    ('name', unicode, ''),  # element should have type unicode
-    ('amount', to_float32, 0.0),
-    ('number', np.float64, 0.0),
-    ('dtime', np.datetime64, None)
+    ('id', np.int32, np.int32,  ''),
+    ('name', unicode, unicode, ''),  # element should have type unicode
+    ('amount', np.float32, to_float32, 0.0),
+    ('number', np.float64, np.float64, 0.0),
+    #('dtime', np.datetime64, pd.to_datetime, None)
+    ('dtime', pd.Timestamp, pd.to_datetime, None)
 ]
 
 '''
@@ -60,7 +66,7 @@ dtypes = [
 #    transform=0, parse_on_loading=1, check_after_load=1)
 #read txt
 data = read_table(filename, encoding='gb2312', dtypes=dtypes, na_values={"number":['']},
-    transform=0, parse_on_loading=1, check_after_load=1)
+    parse_on_loading=1, check_after_load=1)
 
 print data
 
