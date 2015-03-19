@@ -23,3 +23,21 @@ def cal_time(func):
         print "Time Consumed: {0}s".format(et - st)
     return wrapper
 
+'''
+USAGE:
+    add 'default_val' kwd argument for function
+
+EXAMPLE:
+def test_add_args():
+    def foo(val, default_val):
+        print "default: ",default_val
+    boo = add_args(foo, default_val=100)
+    print boo(1000)
+'''
+def add_args(parse_func, default_val):
+    def parser(*args):
+        return parse_func(*args, default_val=default_val)
+    return parser
+
+
+

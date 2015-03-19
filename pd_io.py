@@ -11,8 +11,106 @@ import numpy as np
 
 from decorators import add_doc
 from decorators import cal_time
+from decorators import add_args
+
+'''
+NOTICE:
+    1, null values and wrong values should be NaN
+    2, converter function has format: convert_func(element, default_value)
+
+DTYPE:
+    should be better np dtypes.
+numpy methods
+    int  np.int16, np.int32, np.int64
+    float np.float, np.float32, np.float64
+    datetime  np.datetime64
+
+CONVERTER:
+    should be has format: convert_func(element, default_value)
+
+EXAMPLE FOR TYPE DEFINATION:
+
+def to_float32(target_val, default_val):
+    try:
+        new_val = np.float32(target_val)
+    except:
+        new_val = default_val
+    return new_val
+
+dtypes = [
+    # (field_name/field_index, type, default_value) 
+    # if default_value is None, should be Nan in pandas
+    # and type should always be numpy types
+    # str or unicode type will transformed to 
+    ('id', np.int32, ''),
+    ('name', unicode, ''),  # element should have type unicode
+    ('amount', to_float32, 0.0),
+    ('number', np.int32, 0),
+    ('dtime', np.datetime64, None)
+]
+'''
+
+''' 
+when data is loaded into DataFrame, program will check the data type for eath 
+column of dataframe. but circumstances happend on some certain data type which
+ will be changed in loading, `CHECK_T` is dict for it
+'''
+CHECK_T = {
+    np.datetime64: np.dtype('<M8[ns]'),
+    str: np.dtype('O')
+}
 
 
+def parse_dtypes(dtypes):
+    ''' parse the dtyps list, generate different parts of arguments for pandas read_csv/table functions
+    '''
+    dtype = {}
+    parse_dates = []
+    default_value_dict = {}
+    converters = {}
+    for index_or_name, _t, default_value in dtypes:
+        # handle default values, when the value is NaN, then fillit
+        if default_value is not None:
+            default_value_dict[index_or_name] = default_value
+        # converters
+        if _t.__name__ not in np.__dict__:
+            converters[index_or_name] = add_args(_t, default_val= default_value)
+            continue
+        # parse_dates
+        if _t in [np.datetime64]:
+            parse_dates.append(index_or_name)
+            continue
+        # dtype
+        dtype[index_or_name] = _t
+    return dtype, parse_dates, converters, default_value_dict
+
+def check_ser_type(ser, dtype):
+    ''' check series has dtype or not
+    '''
+    def check_type():
+        try:
+            return ser.dtype == dtype or type(ser[0]) == dtype
+        except:
+            return False
+
+    error_list = []
+    if not check_type():
+        try:
+            ser.astype(dtype)
+        except:
+            pass
+    if not check_type():
+        try:
+            ser = dtype(ser)
+        except:
+            pass
+    if not check_type():
+        try:
+            for idx, item in enumerate(ser):
+                ser[idx] = dtype(item)
+        except:
+            error_list.append((idx, item, dtype))
+    return ser, error_list
 
 @add_doc(pd.read_csv)
 def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
@@ -43,7 +141,7 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     return data
 
 @add_doc(pd.read_csv)
-def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}, 
+def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},
         error_bad_lines=True, **kargs):
     ''' read csv file by pandas.read_csv
     @parameters:
@@ -76,10 +174,21 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtype=None, ftypes={}
     data = read_csv(filename, header=0, dtype = dtype, ftypes=ftypes, encoding='gb2312')
     @END
     '''
+    # read data
+    dtype, parse_dates, converters, default_value_dict = parse_dtypes(dtypes)
     data = pd.read_csv(filename, header=header, encoding=encoding, sep=sep, 
-            dtype=dtype, **kargs)
-    for key, ftype in ftypes.iteritems():
-        data[key] = ftype(data[key])
+            dtype=dtype, parse_dates=parse_dates, converters = converters,
+            error_bad_lines=error_bad_lines)
+    # check data
+    for index_or_name, _t, default_value in dtypes:
+        check_t = CHECK_T.get(_t, _t)
+        ser, error_list = check_ser_type(data[index_or_name], check_t)
+        if error_list:
+            print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
+    # fillna
+
+    #
+    
     return data
 
 @add_doc(pd.read_table)
@@ -95,31 +204,8 @@ def read_table(filename, sep='\t', header=0, encoding='utf-8', **kargs):
     data = pd.read_table(filename, sep=sep, header=header, encoding=encoding, **kargs)
     return data
 
-''' dtype:
-numpy methods
-    int  np.int16, np.int32, np.int64
-    float np.float, np.float32, np.float64
-    datetime  np.datetime64
 
-python buildin methods
-    int
-    float
-    datetime.datetime
 
-conventers:
-pandas methods
-'''
-import pandas as pd
-import numpy as np
-dtypes = [
-    # (field_name/field_index, type, default_value) 
-    # if default_value is None, should be Nan in pandas
-    ('id', np.int32, ''),
-    ('name', str, ''),  # element should have type unicode
-    ('amount', np.float32, 0.0),
-    ('number', np.int32, 0),
-    ('dtime', np.datetime64, None)
-]
 
 
 def handle_type(data, dtypes):
