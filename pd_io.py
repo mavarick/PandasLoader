@@ -45,7 +45,8 @@ column of dataframe. but circumstances happend on some certain data type which
 
 CHECK_T = {
     np.datetime64: np.dtype('<M8[ns]'),
-    str: np.dtype('O')
+    str: np.dtype('O'),
+    unicode: np.dtype('O'),
 }
 
 def parse_dtypes(dtypes):
@@ -57,7 +58,7 @@ def parse_dtypes(dtypes):
     converters = {}
     num = 0
     for index in range(len(dtypes)):
-        index_or_name, _t, _func, default_value = dtypes[index]
+        index_or_name, _t, _func, default_value = parse_field_format(dtypes[index])
         # handle default values, when the value is NaN, then fillit
         if default_value is not None:
             default_value_dict[index_or_name] = default_value
@@ -105,6 +106,72 @@ def check_ser_type(ser, dtype, parse_func):
             error_list.append((idx, item, dtype))
     return ser, error_list
 
+
+TYPE_DEFAULT=unicode
+DEFAULT_PARSER=unicode
+DEFAULT_VALUE=None
+TYPE_DEFAULT_VALUE={
+    unicode: '',
+    # others: None
+}
+TYPE_DEAFULT_PARSER={
+    unicode:unicode,
+}
+def parse_field_format(field_item):
+    '''parse input field
+
+    just for convinience
+
+    Parameters
+    ----------
+    field_item: tuple with length 1/2/3/4
+        field_item is of type tuple:
+        complete format is (field_name, type, parser, default), for convinience, defile:
+        :(name, ) : with type/parser are all np.unicode, and default_val is None
+        :(name, type, ): with parse_func = type, and default is None
+        :(name, type, parser, ): with default is None
+        or of type dict:
+        {"name": name, 'type'=type, 'parser': parser, 'default':default_val}
+        :{"name": name}: type/parser='unicode', default is None
+        :{"name": name, "default":default}: type/parser = unicode
+        :{"name": name, "type": type, "default":default}: parser=type
+
+    Returns
+    -------
+    (name, type, parser, default)
+        the complete format
+
+    Notes
+    -----
+    1, default value of unicode type is ''
+    '''
+    if type(field_item) in [dict]:
+        name = field_item.get('name')
+        field_type = field_item.get('type', unicode)
+        field_parser = field_item.get("parser", unicode)
+        default = field_item.get("default", TYPE_DEFAULT.get(field_type, None))
+    elif type(field_item) in [list, tuple]:
+        args_number = len(field_item)
+        if args_number == 1:
+            name = field_item[0]
+            field_type = DEFAULT_TYPE
+            field_parser = TYPE_DEAFULT_PARSER.get(field_type, DEFAULT_PARSER)
+            default = TYPE_DEFAULT_VALUE.get(field_type, DEFAULT_VALUE)
+        elif args_number == 2:
+            name, field_type = field_item
+            field_parser = TYPE_DEAFULT_PARSER.get(field_type, DEFAULT_PARSER)
+            default = TYPE_DEFAULT_VALUE.get(field_type, DEFAULT_VALUE)
+        elif args_number == 3:
+            name, field_type, field_parser = field_item
+            default = TYPE_DEFAULT_VALUE.get(field_type, DEFAULT_VALUE)
+        elif args_number == 4:
+            name, field_type, field_parser, default = field_item
+        else:
+            raise (Exception, "Error: Arguments Number is out of [1, 2, 3 4]")
+    else:
+        raise (Exception, "Error: Field Type must be dict/list/tuple")
+    return (name, field_type, field_parser, default)
+
 #@add_doc(pd.read_csv)
 def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     '''read excel by pandas.read_excel
@@ -119,7 +186,8 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
     # read the data
     data = pd.read_excel(filename, sheet_name=sheet_name, header=header)
     # check the data
-    for index_or_name, _t, _func, default_value in dtypes:
+    for field_item in dtypes:
+        index_or_name, _t, _func, default_value = parse_field_format(field_item)
         check_t = CHECK_T.get(_t, _t)
            
         ser, error_list = check_ser_type(data[index_or_name], check_t, _func)
@@ -127,7 +195,8 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
             print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
 
     # fillna
-    for index_or_name, _t, _func, default_value in dtypes:
+    for field_item in dtypes:
+        index_or_name, _t, _func, default_value = parse_field_format(field_item)
         if default_value is not None:
             data[index_or_name].fillna(default_value, inplace=True)
     #
@@ -246,6 +315,7 @@ def read_table(filename, sep='\t', header=0, encoding='utf-8',
         parse_on_loading=parse_on_loading, check_after_load=check_after_load,
         **kargs)
 
+@np.deprecate
 def handle_type(data, dtypes):
     ''' handle the data types
     '''

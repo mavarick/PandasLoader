@@ -47,6 +47,13 @@ dtypes = [
     ('dtime', pd.Timestamp, pd.to_datetime, None)
 ]
 
+dtyps = [
+    {"name":"id"},
+    {"name":"name"},
+    ('amount', np.float32, to_float32, 0.0),
+    {"name":'number', "type":np.float32, "default": 0.0},
+    {"name":'dtime', "type": pd.Timestamp, "parser":pd.to_datetime, "deafult": None}
+]
 '''
 dtypes = [
     (0, np.int32, 0),
