@@ -38,7 +38,7 @@ dtypes = [
     # str or unicode type will transformed to 
 
     ('id', np.int32, ''),
-    ('name', str, ''),  # element should have type unicode
+    ('name', unicode, ''),  # element should have type unicode
     ('amount', to_float32, None),
     ('number', np.float64, 0),
     ('dtime', np.datetime64, 0)

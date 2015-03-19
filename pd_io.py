@@ -149,18 +149,18 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
 @add_doc(pd.read_csv)
 def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},
         error_bad_lines=True, 
-        parse_on_loading=1, check_after_loading=1,
+        parse_on_loading=1, check_after_load=1,
         **kargs):
     ''' read csv file by pandas.read_csv
     @parameters:
         filename
         parse_on_loading        means weather parse when loading
-        check_after_loading     means weather check after loading
-            (parse_on_loading=1, check_after_loading=1)  most robust method for loading
-            (parse_on_loading=1, check_after_loading=0)  recommand way
+        check_after_load     means weather check after loading
+            (parse_on_loading=1, check_after_load=1)  most robust method for loading
+            (parse_on_loading=1, check_after_load=0)  recommand way
                 pandas buildin data parser is very great. if want to use id, must be parse_on_loading=1
-            (parse_on_loading=0, check_after_loading=1)  for error data detection
-            (parse_on_loading=0, check_after_loading=0)  load without parsing, all is Object('O')
+            (parse_on_loading=0, check_after_load=1)  for error data detection
+            (parse_on_loading=0, check_after_load=0)  load without parsing, all is Object('O')
         header      default is 0
         encoding    character encoding, chinese character in csv file from excel usually
                         is 'gb2312'
@@ -190,14 +190,14 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},
             error_bad_lines=error_bad_lines)
     #pdb.set_trace()
     # check data
-    if check_after_loading:
+    if check_after_load:
         for index_or_name, _t, default_value in dtypes:
-           if _t.__name__ not in np.__dict__:
+            if _t.__name__ not in np.__dict__:
                _t = add_args(_t, default_val= default_value)
-           check_t = CHECK_T.get(_t, _t)
+            check_t = CHECK_T.get(_t, _t)
            
-           ser, error_list = check_ser_type(data[index_or_name], check_t)
-           if error_list:
+            ser, error_list = check_ser_type(data[index_or_name], check_t)
+            if error_list:
                print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
     # fillna
     for index_or_name, default_val in default_value_dict.iteritems():
@@ -217,10 +217,6 @@ def read_table(filename, sep='\t', header=0, encoding='utf-8', **kargs):
     '''
     data = pd.read_table(filename, sep=sep, header=header, encoding=encoding, **kargs)
     return data
-
-
-
-
 
 def handle_type(data, dtypes):
     ''' handle the data types
