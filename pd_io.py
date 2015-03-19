@@ -60,7 +60,6 @@ CHECK_T = {
     str: np.dtype('O')
 }
 
-
 def parse_dtypes(dtypes):
     ''' parse the dtyps list, generate different parts of arguments for pandas read_csv/table functions
     '''
@@ -68,7 +67,9 @@ def parse_dtypes(dtypes):
     parse_dates = []
     default_value_dict = {}
     converters = {}
-    for index_or_name, _t, default_value in dtypes:
+    num = 0
+    for index in range(len(dtypes)):
+        index_or_name, _t, default_value = dtypes[index]
         # handle default values, when the value is NaN, then fillit
         if default_value is not None:
             default_value_dict[index_or_name] = default_value
@@ -87,12 +88,14 @@ def parse_dtypes(dtypes):
 def check_ser_type(ser, dtype):
     ''' check series has dtype or not
     '''
+    #pdb.set_trace()
     def check_type():
         try:
             return ser.dtype == dtype or type(ser[0]) == dtype
         except:
             return False
 
+    #pdb.set_trace()
     error_list = []
     if not check_type():
         try:
@@ -101,7 +104,9 @@ def check_ser_type(ser, dtype):
             pass
     if not check_type():
         try:
-            ser = dtype(ser)
+            new_ser = dtype(ser)
+            if new_ser and len(new_ser) == len(ser):
+                ser = new_ser
         except:
             pass
     if not check_type():
@@ -109,6 +114,7 @@ def check_ser_type(ser, dtype):
             for idx, item in enumerate(ser):
                 ser[idx] = dtype(item)
         except:
+            pdb.set_trace()
             error_list.append((idx, item, dtype))
     return ser, error_list
 
@@ -142,10 +148,19 @@ def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
 
 @add_doc(pd.read_csv)
 def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},
-        error_bad_lines=True, **kargs):
+        error_bad_lines=True, 
+        parse_on_loading=1, check_after_loading=1,
+        **kargs):
     ''' read csv file by pandas.read_csv
     @parameters:
         filename
+        parse_on_loading        means weather parse when loading
+        check_after_loading     means weather check after loading
+            (parse_on_loading=1, check_after_loading=1)  most robust method for loading
+            (parse_on_loading=1, check_after_loading=0)  recommand way
+                pandas buildin data parser is very great. if want to use id, must be parse_on_loading=1
+            (parse_on_loading=0, check_after_loading=1)  for error data detection
+            (parse_on_loading=0, check_after_loading=0)  load without parsing, all is Object('O')
         header      default is 0
         encoding    character encoding, chinese character in csv file from excel usually
                         is 'gb2312'
@@ -162,33 +177,32 @@ def read_csv(filename, header=0, encoding='utf8', sep=';', dtypes = {},
             but pd.Timestamp does not work at all, we should use DatatimeIndex(col)
             this could cause very bad experiences!
             look up doc, type should only be 'numpy.dtype or Python type' !
-    examples:
-        dtype={
-            u'发货额(扣信息费)': np.float32,
-            u'件数': int,
-        }
-        ftype={
-            u'日期': pd.DatetimeIndex,
-            u'月份': pd.DatetimeIndex
-        }
-    data = read_csv(filename, header=0, dtype = dtype, ftypes=ftypes, encoding='gb2312')
     @END
     '''
     # read data
     dtype, parse_dates, converters, default_value_dict = parse_dtypes(dtypes)
-    data = pd.read_csv(filename, header=header, encoding=encoding, sep=sep, 
+    if parse_on_loading == 1:
+        data = pd.read_csv(filename, header=header, encoding=encoding, sep=sep, 
             dtype=dtype, parse_dates=parse_dates, converters = converters,
             error_bad_lines=error_bad_lines)
+    else:
+        data = pd.read_csv(filename, header=header, encoding=encoding, sep=sep,
+            error_bad_lines=error_bad_lines)
+    #pdb.set_trace()
     # check data
-    for index_or_name, _t, default_value in dtypes:
-        check_t = CHECK_T.get(_t, _t)
-        ser, error_list = check_ser_type(data[index_or_name], check_t)
-        if error_list:
-            print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
+    if check_after_loading:
+        for index_or_name, _t, default_value in dtypes:
+           if _t.__name__ not in np.__dict__:
+               _t = add_args(_t, default_val= default_value)
+           check_t = CHECK_T.get(_t, _t)
+           
+           ser, error_list = check_ser_type(data[index_or_name], check_t)
+           if error_list:
+               print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
     # fillna
-
+    for index_or_name, default_val in default_value_dict.iteritems():
+        data[index_or_name].fillna(default_val, inplace=True)
     #
-    
     return data
 
 @add_doc(pd.read_table)

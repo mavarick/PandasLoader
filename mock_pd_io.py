@@ -30,21 +30,33 @@ def to_float32(target_val, default_val):
         new_val = default_val
     return new_val
 
+
 dtypes = [
     # (field_name/field_index, type, default_value) 
     # if default_value is None, should be Nan in pandas
     # and type should always be numpy types
     # str or unicode type will transformed to 
+
     ('id', np.int32, ''),
     ('name', str, ''),  # element should have type unicode
     ('amount', to_float32, None),
-    ('number', np.int32, 0),
-    ('dtime', np.datetime64, None)
+    ('number', np.float64, 0),
+    ('dtime', np.datetime64, 0)
 ]
 
+'''
+dtypes = [
+    (0, np.int32, 0),
+    (1, str, ''),  # element should have type unicode
+    (2, to_float32, None),
+    (3, np.int32, 0),
+    (4, np.datetime64, None)
+]
+'''
 
 
-data = read_csv(filename, encoding='gb2312', dtypes=dtypes)
+data = read_csv(filename, encoding='gb2312', dtypes=dtypes, na_values={"number":['']},
+    transform=0, parse_on_loading=1, check_after_load=1)
 
 
 print data
