@@ -3,7 +3,7 @@ PandasLoader
 
 Example
 --------------------
-See pd.io read_csv function for details
+See pd_io.read_csv function for details
 
 NOTES
 -----
@@ -38,6 +38,11 @@ data is 10000-length string series
 | [float(x) for x in ser] | 100 loops, best of 3: 1.77 ms per loop |
 | map(lambda x:np.float32(x), ser) | 100 loops, best of 3: 9.75 ms per loop |  
 ```
+
+Problems
+--------
+1, nan with type: type<'float'>, and if ser =Series[nan, NaN], you should use ser.fillna(val)
+twice to fill the na value totally!
 
 TODO
 ----

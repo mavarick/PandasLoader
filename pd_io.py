@@ -151,8 +151,51 @@ def parse_field_format(field_item):
         raise (Exception, "Error: Field Type must be dict/list/tuple")
     return (name, field_type, field_parser, default)
 
+def parse_field_format_from_dict(dtypes):
+    '''parse field type from dict,
+
+    more easier way to use read_csv, especially with very many columns
+
+    Parameters
+    ----------
+    dtypes: dict, with format: 
+        {
+        (np.float32, default_val): ['col1', 'col2', ...],
+        (np.float32, default_val2): ['col11', 'col22', ...]
+        (np.datetime64, default_val3): ['col3', 'col4', ...]
+        }
+
+    Returns
+    -------
+    [(name, type, parser, default)]
+    '''
+    parsed_dtypes = []
+    for (_t, default_val), fields in dtypes.iteritems():
+        for field in fields:
+            parsed_dtypes.append(parse_field_format(
+                    {'name': field, 'type': _t, 'default': default_val}
+                ))
+    return parsed_dtypes
+
+def parse_field_format_from_list(dtypes):
+    '''parse defined field format
+
+    Parameters
+    ----------
+    dtypes: list of tuple or dict,
+        tuple: (name, type, parser, default)
+        dict:  {"name": name, 'type'=type, 'parser': parser, 'default':default_val}
+    '''
+    return [parse_field_format(field) for field in dtypes]
+
+def parse_fields(dtypes):
+    return {
+        dict: parse_field_format_from_dict, 
+        list:parse_field_format_from_list
+        }[type(dtypes)](dtypes)
+
 #@add_doc(pd.read_csv)
-def read_excel(filename, sheet_name=0, header=0, dtypes={}, **kargs):
+def read_excel(filename, sheet_name=0, header=0, dtypes=[], **kargs):
     '''read excel by pandas.read_excel
 
     Parameters
@@ -260,7 +303,7 @@ def read_csv_old(filename, header=0, encoding='utf8', sep=';', dtypes = {},error
     help(pandas.DataFrame.read_csv)
     '''
     # read data
-    parsed_dtypes = [parse_field_format(field) for field in dtypes]
+    parsed_dtypes = parse_fields(dtypes)
     #pdb.set_trace()
     dtype, parse_dates, converters, default_value_dict, field_names = parse_dtypes(parsed_dtypes)
     names = field_names if filter_names else None
@@ -359,7 +402,8 @@ def read_csv(filename, dtypes=[], sep=';', error_bad_lines=True, filter_names=Tr
     pandas.read_csv
 
     '''
-    parsed_dtypes = [parse_field_format(field) for field in dtypes]
+    parsed_dtypes = parse_fields(dtypes)
+
     dtype, parse_dates, converters, default_value_dict, field_names = parse_dtypes(parsed_dtypes)
 
     names = field_names if filter_names else None
