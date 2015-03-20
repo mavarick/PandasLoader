@@ -1,45 +1,24 @@
 PandasLoader
 ============
 
-Simple Usage Example
+Example
 --------------------
-dtypes is an easy way to define field type of DataFrame.
-```python
-dtypes = [
-          # (field_name/field_index, type, default_value)
-          # if default_value is None, result will be NaN in DataFrame
-          ('id', np.float64, 0),
-          ('name', unicode, ''), # element should have type unicode
-          ('amount', to_float32, None),
-          (4, np.datetime64, None)
-     ]
-```
-dtypes will be classified in to dtype, converter, parse_dates in pandas read_csv arguments.
-converter function should be like this:
-```python
-      def to_float32(target_val, default_val):
-          try:
-               new_val = np.float32(target_val)
-          except:
-               new_val = default_val
-          return new_val
-```
-then, use read_csv to load data:
-```python
-      data = read_csv(filename, encoding='gb2312', dtypes=dtypes)
-```
+See pd.io read_csv function for details
 
 NOTES
 -----
   1. np.datetime64. if none, it's NaT, if 0, means '1970-01-01 00:00:00'
-  2. use np.float64 to represent int type. or NaN value will raise.
+  2. if nrows are set, pd.read_csv just read certain rows, which could save a lot of time
+  3. use iconv to convert the file to utf8 before loading the data
+  4. always use array methods to transform data, not element-level methods
 
 Control Processing
 ------------------
-use `parse_on_loading` and `check_after_load` to control the overflow!
-Be aware of this:
-  1. if want to use pandas datetime parse, like use `parse_dates` in pd.read_csv, parse_on_loading should be 1
-  2. if want to debug the data, parse_on_loading should be 0 eapecially when data is large: data should be first in memory
+compared to last commit version, this one is more simple and robust, the processing flow is below:
+  1. read all data as type unicode/None.
+  2. transform column defined in dtypes to wanted type, by array-level method
+  3. show wrong data on console
+  4. fill NaN in specified column with default value defined in dtypes
 
 Checking Processing
 -------------------

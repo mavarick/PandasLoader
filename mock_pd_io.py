@@ -10,7 +10,7 @@ from pd_io import read_csv, read_table, read_excel
 ## for csv file
 filename = '/Users/apple/Documents/privates/tools/temp/mock.csv'
 filename = '/Users/apple/Documents/privates/tools/temp/mock.txt'
-filename = '/Users/apple/Documents/privates/tools/temp/mock.xlsx'
+filename = '/Users/apple/Documents/privates/tools/temp/mock.utf8.csv'
 '''
 names = ['id', 'name', 'amount', 'number', 'dtime']
 dtype = {
@@ -39,38 +39,33 @@ dtypes = [
     # and type should always be numpy types
     # str or unicode type will transformed to 
 
-    ('id', np.int32, np.int32,  ''),
-    ('name', unicode, unicode, ''),  # element should have type unicode
-    ('amount', np.float32, to_float32, 0.0),
-    ('number', np.float64, np.float64, 0.0),
-    #('dtime', np.datetime64, pd.to_datetime, None)
-    ('dtime', pd.Timestamp, pd.to_datetime, None)
+    ('id', np.int32, None,  ''),
+    ('name', unicode, None, ''),  
+    ('amount', np.float32, None, 0.0),
+    ('number', np.int32, None, 0.0),
+    ('dtime', np.datetime64, None, None)
+    #('dtime', pd.Timestamp, pd.to_datetime, None)
 ]
 
-dtyps = [
+'''
+dtypes = [
     {"name":"id"},
     {"name":"name"},
     ('amount', np.float32, to_float32, 0.0),
     {"name":'number', "type":np.float32, "default": 0.0},
-    {"name":'dtime', "type": pd.Timestamp, "parser":pd.to_datetime, "deafult": None}
-]
-'''
-dtypes = [
-    (0, np.int32, 0),
-    (1, str, ''),  # element should have type unicode
-    (2, to_float32, None),
-    (3, np.int32, 0),
-    (4, np.datetime64, None)
+    {"name":'dtime', "type": np.datetime64, "parser":np.datetime64, "deafult": None}
 ]
 '''
 
 #read csv
-#data = read_csv(filename, encoding='gb2312', dtypes=dtypes, na_values={"number":['']},
-#    transform=0, parse_on_loading=1, check_after_load=1)
+data = read_csv(filename, dtypes=dtypes, sep=';')
+#data = read_csv(filename, dtypes=dtypes, sep=';',
+#    parse_on_loading=1, check_after_load=0, filter_names=0)
 #read txt
 #data = read_table(filename, encoding='gb2312', dtypes=dtypes, na_values={"number":['']},
 #    parse_on_loading=1, check_after_load=1)
 
-data = read_excel(filename, 0, dtypes=dtypes)
+#data = read_excel(filename, 0, dtypes=dtypes, filter_names=1)
+pdb.set_trace()
 print data
 
