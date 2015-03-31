@@ -105,12 +105,12 @@ def parse_field_format(field_item):
     field_item: tuple with length 1/2/3/4
         field_item is of type tuple:
         complete format is (field_name, type, parser, default), for convinience, defile:
-        :(name, ) : with type/parser are all np.unicode, and default_val is None
+        :(name, ) : be left to pandas to parse type
         :(name, type, ): with parse_func = type, and default is None
         :(name, type, parser, ): with default is None
         or of type dict:
         {"name": name, 'type'=type, 'parser': parser, 'default':default_val}
-        :{"name": name}: type/parser='unicode', default is None
+        :{"name": name}: be left to pandas to parse type automatically
         :{"name": name, "default":default}: type/parser = unicode
         :{"name": name, "type": type, "default":default}: parser=type
 
@@ -125,16 +125,19 @@ def parse_field_format(field_item):
     '''
     if type(field_item) in [dict]:
         name = field_item.get('name')
-        field_type = field_item.get('type', unicode)
-        field_parser = field_item.get("parser", unicode)
-        default = field_item.get("default", TYPE_DEFAULT_VALUE.get(field_type, None))
+        field_type = field_item.get('type', None)
+        field_parser = field_item.get("parser", DEFAULT_PARSER)
+        default = field_item.get("default", None)
+        if field_type is None:
+            print("Warn: Col[{}] is left to pandas to parse the type, ".format(name) +
+                "cause no type is specified")
+            return None
     elif type(field_item) in [list, tuple]:
         args_number = len(field_item)
         if args_number == 1:
-            name = field_item[0]
-            field_type = DEFAULT_TYPE
-            field_parser = TYPE_DEAFULT_PARSER.get(field_type, DEFAULT_PARSER)
-            default = TYPE_DEFAULT_VALUE.get(field_type, DEFAULT_VALUE)
+            print("Warn: Col[{}] is left to pandas to parse the type, ".format(name) +
+                "cause no type is specified")
+            return None
         elif args_number == 2:
             name, field_type = field_item
             field_parser = TYPE_DEAFULT_PARSER.get(field_type, DEFAULT_PARSER)
@@ -186,7 +189,12 @@ def parse_field_format_from_list(dtypes):
         tuple: (name, type, parser, default)
         dict:  {"name": name, 'type'=type, 'parser': parser, 'default':default_val}
     '''
-    return [parse_field_format(field) for field in dtypes]
+    formats = []
+    for field in dtypes:
+        f = parse_field_format(field)
+        if f: 
+            formats.append(f)
+    return formats
 
 def parse_fields(dtypes):
     return {
@@ -224,114 +232,9 @@ def read_excel(filename, sheet_name=0, header=0, dtypes=[], **kargs):
     #
     return data
 
-#@add_doc(pd.read_csv)
-@np.deprecate
-def read_csv_old(filename, header=0, encoding='utf8', sep=';', dtypes = {},error_bad_lines=True, 
-        parse_on_loading=1, check_after_load=1, filter_names=0, 
+def read_csv(filename, dtypes=[], sep=';', error_bad_lines=True, filter_names=False, 
+        header=0, encoding='utf8', force_datetime_transform=True, fillna=True, 
         **kargs):
-    '''read csv file by pandas.read_csv
-
-    Parameters
-    -----------
-    filename: string
-    parse_on_loading: int, bool
-        =1, parsing when loading; =0, not parsing 
-        pandas buildin data parser is very great. if want to use it, parse_on_loading should be 1
-    check_after_load: int, bool
-        =1, checking after load; =0, not checking
-        (parse_on_loading=1, check_after_load=1)  most robust method for loading
-        (parse_on_loading=1, check_after_load=0)  recommand way
-                
-        (parse_on_loading=0, check_after_load=1)  for error data detection
-        (parse_on_loading=0, check_after_load=0)  load without parsing, all is Object('O')
-    filter_names: int, bool
-        =1, just use columns with names listed in dtyps; =0, load all, with others be unicode type
-    header: int
-        set header row index, see pandas.read_csv
-    encoding: string. like 'gb2312'/'utf-16' for chinese, 
-        character encoding, chinese character in csv file from excel usually is 'gb2312'
-        pandas raise errors when encoding is not right, and for chinese and korean,
-            'utf-16' is better for that
-    sep: string
-    dtype: list or dict, also see: pandas.read_csv
-        for Datetime field, there are two ways to decide the datetime field:
-            1, type: np.datetime64, and use parse_dates (code inline)
-            2, type: pd.Timestamp, and use pd.to_datetime
-    error_bad_lines: bool. 
-        default is False, meaning skip bad lines, whicn contains more or less elements
-
-    Returns
-    ------
-    data: pandas.DataFrame 
-
-    Examples
-    --------
-    # define convertion function
-    def to_float32(target_val, default_val):
-    try:
-        new_val = np.float32(target_val)
-    except:
-        new_val = default_val
-    return new_val
-
-    #define dtypes
-    dtypes = [
-        # (field_name/field_index, type, default_value) 
-        # if default_value is None, should be Nan in pandas
-        # and type should always be numpy types
-        ('id', np.int32, ''),
-        ('name', unicode, ''),  # element should have type unicode
-        ('amount', to_float32, 0.0),
-        ('number', np.int32, 0),
-        ('dtime', np.datetime64, None)
-    ]
-    # read file
-    data = read_csv(filename, encoding='gb2312', dtypes=dtypes, 
-        parse_on_loading=1, check_after_load=1)
-
-    Notes
-    -----
-    1, encoding is one annoying problems in data reading
-    2, pandas use ser.astype(type) to transform the value to specifed types
-    3, np.int should be replaced as np.float, for NaN problems
-    4, encoding dismatching could cause many unexpected problems. So correct encoding data file should be firstly considerated!!
-
-    Also see 
-    --------
-    http://pandas.pydata.org/pandas-docs/stable
-    or 
-    help(pandas.DataFrame.read_csv)
-    '''
-    # read data
-    parsed_dtypes = parse_fields(dtypes)
-    #pdb.set_trace()
-    dtype, parse_dates, converters, default_value_dict, field_names = parse_dtypes(parsed_dtypes)
-    names = field_names if filter_names else None
-    if parse_on_loading == 1:
-        data = pd.read_csv(filename, header=header, encoding=encoding, sep=sep, 
-            dtype=dtype, parse_dates=parse_dates, converters = None,
-            error_bad_lines=error_bad_lines, usecols=names, **kargs)
-        for name, parser in converters.iteritems():
-            data[name] = parser(data[name])
-    else:
-        data = pd.read_csv(filename, header=header, encoding=encoding, sep=sep,
-            error_bad_lines=error_bad_lines, usecols=names, **kargs)
-     #pdb.set_trace()
-    # check data
-    if check_after_load:
-        for index_or_name, _t, _func, default_value in dtypes:
-            check_t = CHECK_T.get(_t, _t)
-            ser, error_list = check_ser_type(data[index_or_name], check_t, _func)
-        if error_list:
-            print "Error Data: {0}, info: {1}".format(index_or_name, error_list)
-    # fillna
-    for index_or_name, default_val in default_value_dict.iteritems():
-        data[index_or_name].fillna(default_val, inplace=True)
-    #
-    return data
-
-def read_csv(filename, dtypes=[], sep=';', error_bad_lines=True, filter_names=True, 
-        header=0, encoding='utf8', force_datetime_transform=True, fillna=True, **kargs):
     '''read csv just for detecting data errors
 
     first load the data with unicode to memory, then use array-level method to transform it
@@ -372,6 +275,7 @@ def read_csv(filename, dtypes=[], sep=';', error_bad_lines=True, filter_names=Tr
     # defile dtypes
     dtypes = [
         # (field_name/field_index, type, func, default_value) 
+        ('name', )  # will left to pandas to parse type automatically
         ('id', np.int32, None,  ''),
         ('name', unicode, None, ''),  
         ('amount', np.float32, None, 0.0),
@@ -408,7 +312,8 @@ def read_csv(filename, dtypes=[], sep=';', error_bad_lines=True, filter_names=Tr
 
     names = field_names if filter_names else None
     data = pd.read_csv(filename, header=header, encoding=encoding, sep=sep, 
-            dtype='unicode', error_bad_lines=error_bad_lines, usecols=names, **kargs)
+            dtype=None, error_bad_lines=error_bad_lines, usecols=names,
+             **kargs)
 
     ok_flag = 1
     for (name, field_type, field_parser, default) in parsed_dtypes:
@@ -418,7 +323,7 @@ def read_csv(filename, dtypes=[], sep=';', error_bad_lines=True, filter_names=Tr
             field_type = np.dtype('<M8[ns]')
             new_col = pd.to_datetime(data[name], coerce=force_datetime_transform)
         # unicode/str <-> np.dtype('O')
-        elif field_type in [unicode, str]:
+        elif field_type in [unicode, str, np.str, np.unicode, np.str_]:
             field_type = np.dtype('O')
             new_col = data[name]
         #
@@ -433,7 +338,7 @@ def read_csv(filename, dtypes=[], sep=';', error_bad_lines=True, filter_names=Tr
             col = data[name]
             for index, item in enumerate(col):
                 try:
-                    col[index] = field_type(item)
+                    col[index] = field_parser(item)
                     ok_flag = 0
                 except:
                     print("  *Error: Index[{}], Item[{}], To Type[{}]".format(
@@ -455,7 +360,161 @@ def read_table(filename, sep='\t', header=0, encoding='utf-8', filter_names=True
     return read_csv(filename, sep=sep, header=header, encoding=encoding, **kargs)
 
 
+def read_csv_simple(filename, dtypes=[], filter_names=False, sep=';', header=0, encoding='utf8',
+        debug_transform=True, force_datetime_transform=True, **kargs):
+    '''read csv file for simplicity of `read_csv`
+
+    Parameters
+    ----------
+    filename: string
+    dtypes: list of tuples, default is []
+        define the types of columns
+    filter_names: boolean, default is False
+        weather only columns in dtypes are read or total columns
+    sep: character, default is ';'
+        sperator between columns
+    header: int,  default is 0
+        table header
+    encoding: string, default is utf8
+    debug_transform: boolean, default is True
+        if True, then use element transformation function to transform the data, or just give one warn tip
+    force_datetime_transform: boolean, default is True
+        coerce value when using to_datetime function, when transform value to datetime
+
+    Dtypes:
+    -------
+    (name|name_list, )  # just for knowing it
+    (name|name_list, type, default)  # 
+        type options:
+        1, np.float64, np.float, np.float32
+        2, np.int64, np.int32, np.int
+        3, np.datetime64
+        4, np.str, np.unicode, np.str_, str, unicode
+    (name, type, parser, default) # feel cumsumber
+
+    Examples
+    --------
 
 
+    Notes
+    -----
+    Some Annoying problems Occurred, when you want one column be int but with NaN value
+    at this time, col.dtype will never be np.int(32, 64).
+    so:
+        1, use float instead of int;
+        2, use default value as possible as you can.
 
+    Returns
+    -------
+    data: pandas.DataFrame
+        with specified columns and types or not
+
+    '''
+    # parse the dtypes
+    names = []
+    name_parsers = []
+    for d in dtypes:
+        len_d = len(d)
+
+        if len_d == 1:
+            if type(d[0]) in [list, set, tuple]:
+                names.extend(d[0])
+            else:
+                names.append(d[0])
+        if len_d == 3:
+            names, _type, default = d 
+            names = names if type(names) in [list, set, tuple] else [names]
+            for name in names:
+                name_parsers.append((name, _type, default))
+
+    # read the files
+    use_col_names = names if filter_names else None
+    data = pd.read_csv(filename, dtype=None, sep=sep, header=header, encoding=encoding, 
+        usecols=use_col_names, **kargs)
+
+    type_dict = {
+            "float": np.float,
+            "floa32": np.float32,
+            "float64": np.float64,
+            float: np.float,
+
+            "int": np.int,
+            "int32": np.int32,
+            "int64": np.int64,
+            int: np.int,
+
+            "datetime": pd.Timestamp,
+            "datetime64": pd.Timestamp,
+
+            "str": np.str,
+            "unicode": np.unicode,
+            str: np.str,
+            unicode: np.unicode
+    }
+    float_type_list = [np.float, np.float32, np.float64]
+    int_type_list = [np.int, np.int32, np.int64]
+    datetime_type_list = [np.datetime64, np.dtype('<M8[ns]'), pd.Timestamp]
+    str_type_list = [np.str, np.unicode]
+
+    # check the column types
+    for item in name_parsers:
+        name, _type, default = item  
+        # till here, the data should be of one type, e.x. np.float64, or mixed of two types,
+        # e.x. [np.str, np.nan]
+        _type = type_dict.get(_type, _type)
+        if default is None:
+            print("Warn: default value [{}] in col[{}] is transformed to [{}]".format(
+                default, name, np.nan))
+            default = np.nan
+
+        # fillna
+        data[name].fillna(default, inplace=True)
+
+        # transform data to specfied type
+        # float-like type
+        if _type in float_type_list:
+            if data[name].dtype not in float_type_list: 
+                # some special data occur! 
+                data[name] = data[name].astype(_type, raise_on_error=False)
+            if data[name].dtype not in float_type_list:
+                print(">> col[{}] can not be astyped to {}".format(name, _type))
+                if debug_transform:
+                    col = data[name]
+                    for index, value in enumerate(col):
+                        try:
+                            col[index] = _type(value)
+                        except:
+                            print("force>> value[{}] in col[{}] can not be transformed to {}".format(
+                                col[index], name, _type) + " , and is forced to default[{}]".format(default))
+                            col[index] = default
+                    data[name] = col.astype(_type)
+
+        # int-like type
+        if _type in int_type_list:
+            if data[name].dtype not in int_type_list:
+                data[name] = data[name].astype(_type, raise_on_error=False)
+            if data[name].dtype not in int_type_list:
+                print(">> col[{}] can not be astyped to {}".format(name, _type))
+                if debug_transform:
+                    col = data[name]
+                    for index, value in enumerate(col):
+                        try:
+                            col[index] = _type(value)
+                        except:
+                            print("force>> value[{}] in col[{}] can not be transformed to {}".format(
+                                col[index], name, _type) + " , and is forced to default[{}]".format(default))
+                            col[index] = default
+                    data[name] = col.astype(_type)
+        # datetime-like type
+        if _type in datetime_type_list:
+            data[name] = pd.to_datetime(data[name], coerce=force_datetime_transform)
+            data[name].fillna(default, inplace=True)
+            if data[name].dtype not in datetime_type_list:
+                print(">> col[{}] can not transormed to datetime type: {},".format(name, _type) + 
+                    " or the default value is not valid")
+        # str-like type
+        if _type in str_type_list:
+            data[name] = data[name].astype(_type, raise_on_error=False)
+
+    return data
 
